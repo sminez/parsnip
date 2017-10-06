@@ -18,14 +18,14 @@ def prefix(tag, precedence, func=None):
     return func
 
 
-def infix(self, tag, precedence, func=None):
+def infix(tag, precedence, func=None):
     '''
     A handler for a left associative infix operation.
     Creates a left handler for the given tag which will be passed
     the left and right operands.
     '''
     if func is None:
-        return lambda f: self.infix(tag, precedence, f)
+        return lambda f: infix(tag, precedence, f)
 
     func._is_infix = True
     func._tag = tag
@@ -33,14 +33,14 @@ def infix(self, tag, precedence, func=None):
     return func
 
 
-def infix_r(self, tag, precedence, func=None):
+def infix_r(tag, precedence, func=None):
     '''
     A handler for a right associative infix operation.
     Creates a left handler for the given tag which will be passed
     the left and right operands.
     '''
     if func is None:
-        return lambda f: self.null_handler(tag, precedence, f)
+        return lambda f: infix_r(tag, precedence, f)
 
     func._is_infix = True
     func._tag = tag
@@ -48,14 +48,14 @@ def infix_r(self, tag, precedence, func=None):
     return func
 
 
-def postfix(self, tag, precedence, func=None):
+def postfix(tag, precedence, func=None):
     '''
     A handler for a postfix operation.
     Creates a left handler for the given tag which will be passed
     the left and right operands.
     '''
     if func is None:
-        return lambda f: self.postfix(tag, precedence, f)
+        return lambda f: postfix(tag, precedence, f)
 
     func._is_postfix = True
     func._tag = tag
@@ -63,14 +63,14 @@ def postfix(self, tag, precedence, func=None):
     return func
 
 
-def surrounding(self, start, end, precedence, func=None):
+def surrounding(start, end, precedence, func=None):
     '''
     A handler for expressions that surround others such as parens.
 
     The handler will be passed the expression between `start` and `end`.
     '''
     if func is None:
-        return lambda f: self.surrounding(start, end, precedence, f)
+        return lambda f: surrounding(start, end, precedence, f)
 
     func._is_surrounding = True
     func._start = start
@@ -163,30 +163,30 @@ class Parser:
         self._add_or_update_parselet(tag)
 
     def _add_prefix(self, tag, precedence, func):
-        @self.null_handler(tag, precedence)
         def null(token):
             operand = self._parse(precedence)
             return func(operand)
+        self._add_null_handler(tag, precedence, null)
 
     def _add_infix(self, tag, precedence, func):
-        @self.left_handler(tag, precedence)
         def left(token, left):
             right = self._parse(precedence)
             return func(left, right)
+        self._add_left_handler(tag, precedence, left)
 
     def _add_postfix(self, tag, precedence, func):
-        @self.left_handler(tag, precedence)
         def left(token):
             return func(token.value)
+        self._add_left_handler(tag, precedence, left)
 
     def _add_surrounding(self, start, end, precedence, func):
-        @self.null_handler(start, precedence)
         def null(token):
             body = self._parse()
             # Pull off the closing deliminator to get rid of it
             self._advance(end)
             return func(body)
-        self.symbol(end)
+        self._add_symbol(end)
+        self._add_null_handler(start, precedence, null)
 
     def _add_literal(self, tag):
         '''

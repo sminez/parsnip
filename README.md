@@ -1,38 +1,61 @@
-.: Parth :.
-===========
+.: Parsnip: parsing like a Pratt :.
+===================================
 
 My own little parser library because I keep ending up writing parsers...
 
-This is a place for me to explore different lexing and parsing techniques.
 
-
-### Contents
-- `simplex` A very basic lexer: create an instance, register tags
+### Demo
 ```python
-l = Lexer()
-
-@l.tag('DIGIT', r'\d')
-def make_digit(s):
-    return int(s)
+from simplex import Lexer, tag
+from parsnip import Parser, infix, prefix, surrounding
 
 
-@l.tag('DASH', r'-')
-def make_dash(s):
-    return s
+class CalcLex(Lexer):
+    IGNORE = ['\s+', '\n']
+    SYMBOLS = [('ADD', r'\+'), ('SUB', r'-'), ('MUL', r'\*'),
+               ('DIV', r'/'), ('LPAREN', r'\('), ('RPAREN', r'\)')]
+
+    @tag('INT', r'-?\d+')
+    def mkint(self, s):
+        return int(s)
 
 
-for t in l.lex('12-345-997'):
-    print(t)
+class CalcParse(Parser):
+    SYMBOLS = ['ADD', 'SUB', 'MUL', 'DIV']
+    LITERALS = ['INT']
+
+    @prefix('SUB', 10)
+    def negate(self, val):
+        return -val
+
+    @infix('ADD', 1)
+    def add(self, l, r):
+        return l + r
+
+    @infix('SUB', 1)
+    def sub(self, l, r):
+        return l - r
+
+    @infix('MUL', 5)
+    def mul(self, l, r):
+        return l * r
+
+    @infix('DIV', 5)
+    def div(self, l, r):
+        return l / r
+
+    @surrounding('LPAREN', 'RPAREN', 0)
+    def parens(self, expr):
+        return expr
 
 
->>> token(tag='DIGIT', value=1)
-    token(tag='DIGIT', value=2)
-    token(tag='DASH', value='-')
-    token(tag='DIGIT', value=3)
-    token(tag='DIGIT', value=4)
-    token(tag='DIGIT', value=5)
-    token(tag='DASH', value='-')
-    token(tag='DIGIT', value=9)
-    token(tag='DIGIT', value=9)
-    token(tag='DIGIT', value=7)
+l = CalcLex()
+p = CalcParse(l)
+text = '(12 + 6) / (4 - 9)'
+
+print('Parsing: {}'.format(text))
+print(p.parse(text))
+
+>>> Parsing: (12 + 6) / (4 - 9)
+    -3.6
 ```

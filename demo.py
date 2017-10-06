@@ -1,61 +1,49 @@
-from simplex import Lexer
-from parsnip import Parser
-
-l = Lexer()
+from simplex import Lexer, tag
+from parsnip import Parser, infix, prefix, surrounding
 
 
-@l.tag('INT', r'-?\d+')
-def mkint(s):
-    return int(s)
+class CalcLex(Lexer):
+    IGNORE = ['\s+', '\n']
+    SYMBOLS = [('ADD', r'\+'), ('SUB', r'-'), ('MUL', r'\*'),
+               ('DIV', r'/'), ('LPAREN', r'\('), ('RPAREN', r'\)')]
+
+    @tag('INT', r'-?\d+')
+    def mkint(self, s):
+        return int(s)
 
 
-l.symbol('ADD', r'\+')
-l.symbol('SUB', r'-')
-l.symbol('MUL', r'\*')
-l.symbol('DIV', r'/')
-l.symbol('LPAREN', r'\(')
-l.symbol('RPAREN', r'\)')
-l.ignore(r'\s+')
-l.ignore(r'\n')
+class CalcParse(Parser):
+    SYMBOLS = ['ADD', 'SUB', 'MUL', 'DIV']
+    LITERALS = ['INT']
 
-p = Parser(l)
-p.literal('INT')
-p.symbol('ADD')
-p.symbol('SUB')
-p.symbol('MUL')
-p.symbol('DIV')
+    @prefix('SUB', 10)
+    def negate(self, val):
+        return -val
 
+    @infix('ADD', 1)
+    def add(self, l, r):
+        return l + r
 
-@p.prefix('SUB', 10)
-def negate(val):
-    return -val
+    @infix('SUB', 1)
+    def sub(self, l, r):
+        return l - r
 
+    @infix('MUL', 5)
+    def mul(self, l, r):
+        return l * r
 
-@p.infix('ADD', 1)
-def add(l, r):
-    return l + r
+    @infix('DIV', 5)
+    def div(self, l, r):
+        return l / r
 
-
-@p.infix('SUB', 1)
-def sub(l, r):
-    return l - r
+    @surrounding('LPAREN', 'RPAREN', 0)
+    def parens(self, expr):
+        return expr
 
 
-@p.infix('MUL', 5)
-def mul(l, r):
-    return l * r
-
-
-@p.infix('DIV', 5)
-def div(l, r):
-    return l / r
-
-
-@p.surrounding('LPAREN', 'RPAREN', 0)
-def parens(expr):
-    return expr
-
-
+l = CalcLex()
+p = CalcParse(l)
 text = '(12 + 6) / (4 - 9)'
+
 print('Parsing: {}'.format(text))
 print(p.parse(text))
