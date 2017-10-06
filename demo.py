@@ -13,7 +13,7 @@ class CalcLex(Lexer):
 
 
 class CalcParse(Parser):
-    SYMBOLS = ['ADD', 'SUB', 'MUL', 'DIV']
+    SYMBOLS = []
     LITERALS = ['INT']
 
     @prefix('SUB', 10)
